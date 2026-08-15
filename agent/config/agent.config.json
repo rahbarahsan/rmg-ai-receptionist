@@ -3,11 +3,11 @@
   "name": "reorder-line",
   "locale": "en",
   "prompt_file": "agent/prompts/system.en.md",
-  "llm": "TODO_your_llm",
+  "llm": "gpt-4o-mini",
   "first_message": "",
   "voice": {
-    "voice_id": "TODO",
-    "model": "TODO_verify_against_docs"
+    "voice_id": "r1KmysJdVYZjJCm4mL3b",
+    "model": "eleven_turbo_v2"
   },
   "conversation": {
     "max_duration_seconds": 420,
