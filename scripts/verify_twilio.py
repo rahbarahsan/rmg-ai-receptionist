@@ -79,41 +79,48 @@ def main() -> int:
             shown = redact(value)
         print(f"  {key}: {role} = {shown}")
 
+    candidates: list[tuple[tuple[str, str], str]] = []
     if api_key_sid and secret:
-        auth, mode = (api_key_sid, secret), "API key (SK + secret)"
-    elif account_sid and auth_token:
-        auth, mode = (account_sid, auth_token), "Account SID + auth token"
-    else:
+        candidates.append(((api_key_sid, secret), "API key (SK + secret)"))
+    if account_sid and auth_token:
+        candidates.append(((account_sid, auth_token), "Account SID + auth token"))
+    if not candidates:
         print(
             "\nNOT ENOUGH: need (API Key SID + secret) or (Account SID + auth token).",
             file=sys.stderr,
         )
         return 1
 
-    print(f"\nAuthenticating with: {mode}")
+    # Try each available credential pair; use the first Twilio accepts. /Accounts.json
+    # both probes auth and reveals the Account SID (AC...) for the follow-up calls.
+    auth: tuple[str, str] | None = None
+    resolved_sid = account_sid
+    print()
+    for cand_auth, mode in candidates:
+        probe = httpx.get(f"{BASE}/Accounts.json", auth=cand_auth, timeout=20)
+        if probe.status_code == 200:
+            print(f"Authenticated with: {mode}")
+            auth = cand_auth
+            accounts = probe.json().get("accounts", [])
+            if not resolved_sid and accounts:
+                resolved_sid = accounts[0].get("sid")
+                print(f"Discovered Account SID {redact(resolved_sid)} from the credentials.")
+            break
+        print(f"  rejected: {mode} ({probe.status_code})")
 
-    if not account_sid:
-        listing = httpx.get(f"{BASE}/Accounts.json", auth=auth, timeout=20)
-        if listing.status_code in (401, 403):
-            print(
-                f"AUTH FAILED ({listing.status_code}): Twilio rejected the credentials.",
-                file=sys.stderr,
-            )
-            return 1
-        listing.raise_for_status()
-        accounts = listing.json().get("accounts", [])
-        if not accounts:
-            print("Authenticated, but no account was returned for this key.", file=sys.stderr)
-            return 1
-        account_sid = accounts[0].get("sid")
-        print(f"Discovered Account SID {redact(account_sid)} from the API key.")
-
-    acct = httpx.get(f"{BASE}/Accounts/{account_sid}.json", auth=auth, timeout=20)
-    if acct.status_code in (401, 403):
+    if auth is None:
+        print("\nAll available credentials were rejected by Twilio (401).", file=sys.stderr)
         print(
-            f"AUTH FAILED ({acct.status_code}): Twilio rejected the credentials.", file=sys.stderr
+            "Fix: create a fresh Standard API Key (copy SID+secret), or use Account SID + token.",
+            file=sys.stderr,
         )
         return 1
+    if not resolved_sid:
+        print("Authenticated but could not determine the Account SID.", file=sys.stderr)
+        return 1
+    account_sid = resolved_sid
+
+    acct = httpx.get(f"{BASE}/Accounts/{account_sid}.json", auth=auth, timeout=20)
     acct.raise_for_status()
     info = acct.json()
     print(f"Account {redact(account_sid)}: status={info.get('status')} type={info.get('type')}")
