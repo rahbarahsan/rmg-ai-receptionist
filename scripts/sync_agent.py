@@ -16,11 +16,23 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
-
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "agent" / "config" / "agent.config.json"
+ENV_PATH = ROOT / ".env"
 API = "https://api.elevenlabs.io/v1/convai/agents"
+
+
+def load_env() -> dict[str, str]:
+    # Read only what this script needs directly, so it does not require the full app
+    # config (DB URL, tool secret) just to push an agent.
+    values: dict[str, str] = {}
+    if ENV_PATH.exists():
+        for raw in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                values[key.strip()] = val.strip().strip('"').strip("'")
+    return values
 
 
 def fail(msg: str) -> None:
@@ -29,7 +41,8 @@ def fail(msg: str) -> None:
 
 
 def main() -> None:
-    api_key = settings.elevenlabs_api_key
+    env = load_env()
+    api_key = env.get("ELEVENLABS_API_KEY")
     if not api_key:
         fail("ELEVENLABS_API_KEY is not set in .env")
 
@@ -53,7 +66,7 @@ def main() -> None:
         "tts": {"voice_id": voice["voice_id"], "model_id": voice["model"]},
     }
 
-    agent_id = settings.elevenlabs_agent_id
+    agent_id = env.get("ELEVENLABS_AGENT_ID")
     is_update = bool(agent_id)
     url = f"{API}/{agent_id}" if is_update else f"{API}/create"
     payload = (
