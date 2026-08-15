@@ -1,0 +1,145 @@
+{
+  "_comment": "Golden set for the Phase-3 parser. `utterance` fields are REAL ASR output from the Phase-1 spike (asr-spike-manifest.json + scripts/asr-spike.ts). `expectedPieces: null` means the parser must raise the given error, not guess. NOTE: four cases (bn-half-more, one-gross, arai-hali, non-integer-real) had their quantity destroyed by ASR, so their expected outcome is now a clarify/error, not the intended pieces — the intended values live in asr-spike-manifest.json. Their error `reason` is Phase-1's best guess; Phase-3 confirms it when the parser is built. A clean non_integer logic case should be re-added in Phase-3 (ASR corrupted the only one). `bn-baro-dozen` is placeholder text — recording 09 was missing.",
+  "cases": [
+    {
+      "id": "en-plain-dozen",
+      "utterance": "Three dozen black polonium",
+      "expectedPieces": 36,
+      "expectedUnit": "dozen",
+      "note": "English baseline control"
+    },
+    {
+      "id": "en-plain-hali",
+      "utterance": "Two hali medium bolo",
+      "expectedPieces": 8,
+      "expectedUnit": "hali",
+      "note": "English hali control — does 'hali' survive at all in an English context?"
+    },
+    {
+      "id": "bn-number-en-unit",
+      "utterance": "তিন ডজন ব্ল্যাক পল",
+      "expectedPieces": 36,
+      "expectedUnit": "dozen",
+      "note": "Bangla numeral, English unit"
+    },
+    {
+      "id": "en-number-bn-unit",
+      "utterance": "তিন হালি মিডিয়াম পোলা",
+      "expectedPieces": 12,
+      "expectedUnit": "hali",
+      "note": "English numeral, Bangla unit"
+    },
+    {
+      "id": "bn-half-more",
+      "utterance": "সাড়ে তিনটাজন কালো পোলা",
+      "expectedPieces": null,
+      "expectedError": "ambiguous_unit",
+      "note": "Intended সাড়ে তিন ডজন = 42 pcs, but ASR fused ডজন into 'তিনটাজন': the number (3.5) survives, the unit is gone. Recoverable behaviour is a clarify, not 42. Phase-3 to confirm reason."
+    },
+    {
+      "id": "bn-der",
+      "utterance": "দেড় ডজন সাদা গেঞ্জি",
+      "expectedPieces": 18,
+      "expectedUnit": "dozen",
+      "note": "দেড় = 1.5, no English cognate — hardcoded in numerals.ts. Does ASR keep it?"
+    },
+    {
+      "id": "bn-arai",
+      "utterance": "আড়াই ডজন পাঞ্জাবি",
+      "expectedPieces": 30,
+      "expectedUnit": "dozen",
+      "note": "আড়াই = 2.5, no English cognate."
+    },
+    {
+      "id": "bengali-digits",
+      "utterance": "পাঁচ ডজন কালো পোলা",
+      "expectedPieces": 60,
+      "expectedUnit": "dozen",
+      "note": "Spoken as পাঁচ; may return as Bengali digit glyph ৫ or ascii 5."
+    },
+    {
+      "id": "bn-baro-dozen",
+      "utterance": "বারো ডজন লাল shirt",
+      "expectedPieces": 144,
+      "expectedUnit": "dozen",
+      "note": "বারো (12) is phonetically close to বারো/বার — dense two-digit Bangla number."
+    },
+    {
+      "id": "bn-pochish-piece",
+      "utterance": "পঁচিশ পিস সাদা গেঞ্জি",
+      "expectedPieces": 25,
+      "expectedUnit": "piece",
+      "note": "পঁচিশ (25) — nasalised, dense Bangla numeral, high-risk for ASR."
+    },
+    {
+      "id": "color-black-polo",
+      "utterance": "কালো পোলো মিডিয়াম তিন ডজন",
+      "expectedPieces": 36,
+      "expectedUnit": "dozen",
+      "note": "Colour + English product noun mid-sentence, number at the end."
+    },
+    {
+      "id": "color-white-panjabi",
+      "utterance": "সাদা পাঞ্জাবি দুই ডজন",
+      "expectedPieces": 24,
+      "expectedUnit": "dozen",
+      "note": "English loan product noun 'panjabi' — does ASR spell it recognisably?"
+    },
+    {
+      "id": "color-red-shirt",
+      "utterance": "লালশার্ট পাঁচ হালি",
+      "expectedPieces": 20,
+      "expectedUnit": "hali",
+      "note": "hali unit spoken in Bangla context."
+    },
+    {
+      "id": "embedded-negotiation",
+      "utterance": "সাড়ে তিন ডজন লাগবে। দাম একটু কম করো",
+      "expectedPieces": 42,
+      "expectedUnit": "dozen",
+      "note": "Number buried in a longer negotiation sentence — does সাড়ে তিন survive the extra words? (Price-negotiation content also escalates per Invariant 2, unrelated to scoring.)"
+    },
+    {
+      "id": "ambiguous-bare-number",
+      "utterance": "Blackball of Ten",
+      "expectedPieces": null,
+      "expectedError": "ambiguous_unit",
+      "note": "Ten what? Parser must ask (ambiguous_unit). Spike only checks the number survived ASR."
+    },
+    {
+      "id": "non-integer-real",
+      "utterance": "দের পেস সাদা গেঞ্জি",
+      "expectedPieces": null,
+      "expectedError": "unknown_number",
+      "note": "Intended দেড় পিস = 1.5 pcs (a non_integer), but ASR corrupted দেড়→দের and পিস→পেস, so no valid number remains — the parser can't even reach the non_integer check. Recoverable behaviour is a clarify. Phase-3 to confirm reason."
+    },
+    {
+      "id": "no-quantity",
+      "utterance": "Black Polo লাগবে",
+      "expectedPieces": null,
+      "expectedError": "no_quantity",
+      "note": "Product only, no number. Parser must ask (no_quantity). No number to score."
+    },
+    {
+      "id": "one-gross",
+      "utterance": "এক গজ সাদা গেঞ্জি",
+      "expectedPieces": null,
+      "expectedError": "ambiguous_unit",
+      "note": "Intended এক গ্রোস = 144 pcs, but ASR turned গ্রোস→গজ (yard, itself a real unit — a silent wrong-unit). Number এক (1) survives, unit is wrong. Recoverable behaviour is a clarify, not 144. Phase-3 to confirm reason."
+    },
+    {
+      "id": "arai-hali",
+      "utterance": "আরাইহানি লাল পল",
+      "expectedPieces": null,
+      "expectedError": "unknown_number",
+      "note": "Intended আড়াই হালি = 10 pcs, but ASR fused both into 'আরাইহানি' (আড়াই→আরাই, হালি→হানি) — neither number nor unit is recoverable. Recoverable behaviour is a clarify, not 10. Phase-3 to confirm reason."
+    },
+    {
+      "id": "bn-char-dozen-panjabi",
+      "utterance": "চার ডজন কালা পান যাবে।",
+      "expectedPieces": 48,
+      "expectedUnit": "dozen",
+      "note": "চার (4) — note ASR sometimes hears চার as 'char'/'car'."
+    }
+  ]
+}

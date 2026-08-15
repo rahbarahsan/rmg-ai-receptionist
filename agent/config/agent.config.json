@@ -1,0 +1,25 @@
+{
+  "_comment": "Source of truth for the ElevenLabs agent. Pushed by scripts/sync-agent.ts. Verify every field name against current ElevenLabs docs before the first sync — this file is a plan, not a validated payload.",
+  "name": "reorder-line",
+  "locale": "en",
+  "prompt_file": "agent/prompts/system.en.md",
+  "llm": "TODO_your_llm",
+  "first_message": "",
+  "voice": {
+    "voice_id": "TODO",
+    "model": "TODO_verify_against_docs"
+  },
+  "conversation": {
+    "max_duration_seconds": 420,
+    "silence_hangup_seconds": 20,
+    "interruptible": true
+  },
+  "tools": [
+    { "name": "lookup_customer", "url": "/api/agent/tools/lookup_customer" },
+    { "name": "search_catalog", "url": "/api/agent/tools/search_catalog" },
+    { "name": "check_stock", "url": "/api/agent/tools/check_stock" },
+    { "name": "create_draft_order", "url": "/api/agent/tools/create_draft_order" },
+    { "name": "get_order_status", "url": "/api/agent/tools/get_order_status" },
+    { "name": "escalate_to_human", "url": "/api/agent/tools/escalate_to_human" }
+  ]
+}
