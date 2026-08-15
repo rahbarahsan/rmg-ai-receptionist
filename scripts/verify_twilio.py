@@ -153,7 +153,7 @@ def main() -> int:
         )
         return 1
 
-    print("\nOK: credentials authenticate and a voice-capable number exists — ready for the")
+    print("\nOK: credentials authenticate and a voice-capable number exists - ready for the")
     print("ElevenLabs Twilio import.")
     return 0
 
