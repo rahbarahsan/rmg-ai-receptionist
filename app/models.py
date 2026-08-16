@@ -62,6 +62,8 @@ class Order(SQLModel, table=True):
     status: OrderStatus = Field(default=OrderStatus.DRAFT)
     total_cents: int = 0
     delivery_note: str | None = None
+    offer_channel: str | None = None  # how to send the final offer: email | sms
+    offer_destination: str | None = None  # confirmed email address or phone number
     call_id: str | None = None  # ElevenLabs conversation id
     agent_notes: str | None = None
     reviewed_by: str | None = None

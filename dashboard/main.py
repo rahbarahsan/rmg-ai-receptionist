@@ -64,6 +64,10 @@ with Session(engine) as session:
                 st.write("**Delivery:**", o.delivery_note)
             if o.agent_notes:
                 st.write("**Agent notes:**", o.agent_notes)
+            if o.offer_channel:
+                st.write(f"**Send offer via:** {o.offer_channel} → {o.offer_destination or '-'}")
+            if o.reviewed_at:
+                st.write("**Reviewed:**", o.reviewed_at.strftime("%Y-%m-%d %H:%M UTC"))
 
             if o.status == OrderStatus.DRAFT:
                 approve, reject = st.columns(2)

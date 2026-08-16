@@ -99,6 +99,15 @@ def tool_defs(base_url: str, secret: str) -> list[dict[str, Any]]:
                 "properties": {
                     "shop_name": {"type": "string", "description": "the caller's shop"},
                     "contact_name": {"type": "string", "description": "the caller's name"},
+                    "offer_channel": {
+                        "type": "string",
+                        "enum": ["email", "sms"],
+                        "description": "how the caller wants the final offer sent",
+                    },
+                    "offer_destination": {
+                        "type": "string",
+                        "description": "the confirmed email address or phone number",
+                    },
                     "delivery_note": {"type": "string", "description": "any delivery instruction"},
                     "items": {
                         "type": "array",

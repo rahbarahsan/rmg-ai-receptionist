@@ -115,6 +115,8 @@ def create_draft_order(session: Session, data: BaseModel) -> ToolResult:
         customer_id=customer.id,
         status=OrderStatus.DRAFT,
         delivery_note=data.delivery_note,
+        offer_channel=(data.offer_channel or "").strip().lower() or None,
+        offer_destination=(data.offer_destination or "").strip() or None,
         call_id=data.call_id,
     )
     session.add(order)

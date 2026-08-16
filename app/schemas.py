@@ -36,6 +36,9 @@ class CreateDraftOrderInput(BaseModel):
     shop_name: str = Field(min_length=1)
     contact_name: str | None = None
     phone: str | None = None
+    # How the caller wants the final offer sent, collected + confirmed on the call.
+    offer_channel: str | None = None  # "email" or "sms"
+    offer_destination: str | None = None  # the confirmed email address or phone number
     call_id: str | None = None
     delivery_note: str | None = Field(default=None, max_length=500)
     items: list[DraftItem] = Field(min_length=1)
