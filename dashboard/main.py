@@ -17,9 +17,14 @@ from sqlmodel import Session, col, select  # noqa: E402
 
 from app.db import engine  # noqa: E402
 from app.models import Customer, Order, OrderItem, OrderStatus, Product  # noqa: E402
+from app.notify import send_offer  # noqa: E402
 
 st.set_page_config(page_title="Order desk", layout="wide")
 st.title("Order desk")
+
+_flash = st.session_state.pop("flash", None)
+if _flash:
+    (st.success if _flash[0] == "success" else st.error)(_flash[1])
 
 
 def usd(cents: int) -> str:
@@ -68,14 +73,22 @@ with Session(engine) as session:
                 st.write(f"**Send offer via:** {o.offer_channel} → {o.offer_destination or '-'}")
             if o.reviewed_at:
                 st.write("**Reviewed:**", o.reviewed_at.strftime("%Y-%m-%d %H:%M UTC"))
+            if o.offer_sent_at:
+                st.write("**Offer sent:**", o.offer_sent_at.strftime("%Y-%m-%d %H:%M UTC"))
 
             if o.status in (OrderStatus.DRAFT, OrderStatus.NEEDS_REVIEW):
                 approve, reject = st.columns(2)
-                if approve.button("✅ Approve", key=f"approve-{o.id}"):
+                if approve.button("✅ Approve & send offer", key=f"approve-{o.id}"):
                     o.status = OrderStatus.CONFIRMED
                     o.reviewed_at = datetime.now(UTC)
                     session.add(o)
                     session.commit()
+                    result = send_offer(session, o)
+                    if result.ok:
+                        o.offer_sent_at = datetime.now(UTC)
+                        session.add(o)
+                        session.commit()
+                    st.session_state["flash"] = ("success" if result.ok else "error", result.detail)
                     st.rerun()
                 if reject.button("✖ Reject", key=f"reject-{o.id}"):
                     o.status = OrderStatus.REJECTED

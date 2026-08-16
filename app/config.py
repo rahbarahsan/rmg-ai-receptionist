@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # Demo caller so a call from your own phone is recognized. PII — .env only.
     demo_caller_phone: str | None = None
     demo_shop_name: str | None = None
+    # Sending the final offer. SMS via Twilio (Account SID + Auth Token + a number);
+    # email via SendGrid (API key + a verified sender).
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_phone_number: str | None = None
+    sendgrid_api_key: str | None = None
+    offer_from_email: str | None = None
     default_locale: str = "en"
 
     @property
