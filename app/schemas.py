@@ -24,14 +24,18 @@ class CheckStockInput(BaseModel):
 
 class DraftItem(BaseModel):
     sku: str
-    qty_pcs: int = Field(gt=0)
-    spoken_qty: str
-    spoken_unit: str
+    amount: float = Field(gt=0)  # numeric quantity the caller said (e.g. 3, 2.5)
+    unit: str = Field(min_length=1)  # spoken unit: dozen | hali | piece | gross (or Bangla)
+    spoken_qty: str  # verbatim, e.g. "three dozen"
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class CreateDraftOrderInput(BaseModel):
-    customer_id: str
+    # New-order flow: the caller is identified by the shop + contact name they speak,
+    # not a pre-known customer id. The handler finds-or-creates the customer.
+    shop_name: str = Field(min_length=1)
+    contact_name: str | None = None
+    phone: str | None = None
     call_id: str | None = None
     delivery_note: str | None = Field(default=None, max_length=500)
     items: list[DraftItem] = Field(min_length=1)
