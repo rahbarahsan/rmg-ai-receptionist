@@ -10,11 +10,14 @@ Tool config shape verified empirically against POST /v1/convai/tools (2026-08).
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 import httpx
+
+_ENV_KEYS = {"ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "PUBLIC_BASE_URL", "AGENT_TOOL_SECRET"}
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "agent" / "config" / "agent.config.json"
@@ -156,7 +159,12 @@ def sync_tools(api_key: str, configs: list[dict[str, Any]]) -> list[str]:
     headers = {"xi-api-key": api_key, "content-type": "application/json"}
     listing = httpx.get(TOOLS, headers=headers, timeout=30).json()
     items = listing.get("tools", listing) if isinstance(listing, dict) else listing
-    by_name = {t.get("name"): t.get("id") for t in items if isinstance(t, dict)}
+    # The listing nests the name under tool_config; the id is top-level.
+    by_name = {
+        (t.get("tool_config") or {}).get("name"): t.get("id")
+        for t in items
+        if isinstance(t, dict)
+    }
 
     ids: list[str] = []
     for cfg in configs:
@@ -177,6 +185,8 @@ def sync_tools(api_key: str, configs: list[dict[str, Any]]) -> list[str]:
 
 def main() -> None:
     env = load_env()
+    # Real shell env overrides .env for these keys (handy for an ephemeral tunnel URL).
+    env.update({k: v for k, v in os.environ.items() if k in _ENV_KEYS})
     api_key = env.get("ELEVENLABS_API_KEY")
     if not api_key:
         fail("ELEVENLABS_API_KEY is not set in .env")
@@ -195,17 +205,19 @@ def main() -> None:
     prompt_block: dict[str, Any] = {
         "prompt": prompt,
         "llm": config["llm"],
-        # end_call system tool so the agent can hang up.
-        "tools": [{"type": "system", "name": "end_call", "description": ""}],
+        # end_call is a built-in system tool — a separate field from tool_ids, and must
+        # NOT be sent via the deprecated inline `tools` field (which can't mix with tool_ids).
+        "built_in_tools": {"end_call": {"type": "system", "name": "end_call", "description": ""}},
+        "tool_ids": [],
     }
 
     base_url = env.get("PUBLIC_BASE_URL")
     tool_secret = env.get("AGENT_TOOL_SECRET")
     if base_url and tool_secret:
         prompt_block["tool_ids"] = sync_tools(api_key, tool_defs(base_url.rstrip("/"), tool_secret))
-        print(f"Attached {len(prompt_block['tool_ids'])} server tools.")
+        print(f"Attached {len(prompt_block['tool_ids'])} order tools + end_call.")
     else:
-        print("PUBLIC_BASE_URL or AGENT_TOOL_SECRET not set — skipping order tools.")
+        print("PUBLIC_BASE_URL or AGENT_TOOL_SECRET not set — order tools skipped (end_call only).")
 
     conversation_config = {
         "agent": {
