@@ -34,6 +34,10 @@ def _tokens(text: str) -> list[str]:
     return [t for t in re.split(r"[^a-z0-9]+", text.lower()) if t]
 
 
+def _usd(cents: int) -> str:
+    return f"${cents / 100:,.2f}"
+
+
 def lookup_customer(session: Session, data: BaseModel) -> ToolResult:
     assert isinstance(data, LookupCustomerInput)
     result = lookup_customer_by_phone(session, data.phone)
@@ -78,7 +82,8 @@ def search_catalog(session: Session, data: BaseModel) -> ToolResult:
                     "name": p.name_en,
                     "color": p.color,
                     "size": p.size,
-                    "unit_price_poisha": p.unit_price,
+                    "price": _usd(p.unit_price),
+                    "unit_price_cents": p.unit_price,
                     "stock_pcs": p.stock_pcs,
                 }
                 for _, p in top
@@ -137,7 +142,7 @@ def create_draft_order(session: Session, data: BaseModel) -> ToolResult:
                 qty_pcs=qty_pcs,
                 spoken_qty=item.spoken_qty,
                 spoken_unit=unit,
-                unit_price_pois=product.unit_price,
+                unit_price_cents=product.unit_price,
                 confidence=item.confidence,
             )
         )
@@ -151,7 +156,7 @@ def create_draft_order(session: Session, data: BaseModel) -> ToolResult:
             }
         )
 
-    order.total_poisha = total
+    order.total_cents = total
     session.add(order)
     session.commit()
     return {
@@ -160,7 +165,8 @@ def create_draft_order(session: Session, data: BaseModel) -> ToolResult:
             "order_id": order.id,
             "status": "DRAFT",
             "shop_name": customer.shop_name,
-            "total_poisha": total,
+            "total": _usd(total),
+            "total_cents": total,
             "items": summary,
         },
     }

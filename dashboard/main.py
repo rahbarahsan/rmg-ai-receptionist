@@ -1,25 +1,29 @@
 """Operator dashboard — review and approve DRAFT orders. Run:
 
-    uv run streamlit run dashboard/app.py
+    uv run streamlit run dashboard/main.py
 
 Reads/writes the same Postgres via the app's SQLModel models. A human turns a DRAFT
 into CONFIRMED here — the agent never does (CLAUDE.md invariant 1).
 """
 
+import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
-import streamlit as st
-from sqlmodel import Session, col, select
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # make `app` importable
 
-from app.db import engine
-from app.models import Customer, Order, OrderItem, OrderStatus, Product
+import streamlit as st  # noqa: E402
+from sqlmodel import Session, col, select  # noqa: E402
+
+from app.db import engine  # noqa: E402
+from app.models import Customer, Order, OrderItem, OrderStatus, Product  # noqa: E402
 
 st.set_page_config(page_title="Order desk", layout="wide")
 st.title("Order desk")
 
 
-def taka(poisha: int) -> str:
-    return f"BDT {poisha / 100:,.2f}"
+def usd(cents: int) -> str:
+    return f"${cents / 100:,.2f}"
 
 
 all_statuses = [s.value for s in OrderStatus]
@@ -39,9 +43,7 @@ with Session(engine) as session:
     for o in orders:
         customer = session.get(Customer, o.customer_id)
         shop = customer.shop_name if customer else "(unknown)"
-        header = (
-            f"{o.status.value} · {shop} · {taka(o.total_poisha)} · {o.created_at:%Y-%m-%d %H:%M}"
-        )
+        header = f"{o.status.value} · {shop} · {usd(o.total_cents)} · {o.created_at:%Y-%m-%d %H:%M}"
         with st.expander(header):
             contact = customer.contact_name if customer else "-"
             st.caption(f"Order {o.id} · call {o.call_id or '-'} · contact {contact}")
@@ -53,8 +55,8 @@ with Session(engine) as session:
                         "product": product.name_en if product else it.product_id,
                         "qty (pcs)": it.qty_pcs,
                         "as said": it.spoken_qty,
-                        "unit price": taka(it.unit_price_pois),
-                        "line total": taka(it.qty_pcs * it.unit_price_pois),
+                        "unit price": usd(it.unit_price_cents),
+                        "line total": usd(it.qty_pcs * it.unit_price_cents),
                     }
                 )
             st.table(rows)

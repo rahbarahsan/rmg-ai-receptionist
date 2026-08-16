@@ -94,3 +94,14 @@ working, verified TS code is retired. Two Python-specific gotchas to remember: S
 table metaclass needs a relaxed mypy override on `app/models`; and `.env` must carry a
 real `AGENT_TOOL_SECRET` (≥16 chars) — it was empty under TS (env was never parsed at
 runtime), which now fails fast at startup.
+
+## 2026-08-16 — Prices in USD cents for the demo (was BDT poisha)
+
+**Decision:** Money is stored as integer **US cents** and shown as `$X.XX`. Catalog reset
+to realistic wholesale USD (polo $4, tee $2, genji ~$1.20, panjabi $7, shirt $5). Fields
+renamed `total_poisha`→`total_cents`, `unit_price_pois`→`unit_price_cents`; `search_catalog`
+and `create_draft_order` return a formatted `"$"` string so the agent reads it naturally.
+**Because:** on a live call the agent read raw poisha aloud ("thirty-two thousand poisha"),
+which sounds absurd; USD is clearer for the current demo audience.
+**Cost:** diverges from the original BDT framing — revisit when localizing for the real
+Bangladeshi market. The integer-minor-unit discipline (no floats) carries over unchanged.

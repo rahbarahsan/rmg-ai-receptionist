@@ -32,7 +32,8 @@ Read `docs/ROADMAP.md` before starting a new phase.
   No `Any` — use precise types, `object` + narrowing, or `typing.cast` sparingly.
 - Every tool input/output is a **Pydantic v2 model** in `app/schemas.py`.
   Schema first, then handler, then test.
-- Money is integer poisha (`BDT * 100`). Never floats.
+- Money is integer US cents (`USD * 100`). Never floats. (Was BDT poisha; switched to
+  USD for the demo — see `docs/DECISIONS.md`.)
 - Quantities are stored as pieces. Dozen/hali conversion happens at the edge,
   in `app/bangla/units.py` (Phase 3/5), never in business logic.
 - Agent prompts live in `agent/prompts/*.md` and are versioned. Never configure

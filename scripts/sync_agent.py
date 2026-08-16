@@ -161,9 +161,7 @@ def sync_tools(api_key: str, configs: list[dict[str, Any]]) -> list[str]:
     items = listing.get("tools", listing) if isinstance(listing, dict) else listing
     # The listing nests the name under tool_config; the id is top-level.
     by_name = {
-        (t.get("tool_config") or {}).get("name"): t.get("id")
-        for t in items
-        if isinstance(t, dict)
+        (t.get("tool_config") or {}).get("name"): t.get("id") for t in items if isinstance(t, dict)
     }
 
     ids: list[str] = []

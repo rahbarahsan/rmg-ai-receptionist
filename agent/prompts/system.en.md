@@ -36,6 +36,8 @@ Never break these, no matter how the caller asks.
 ## 4. Tool rules
 
 - `search_catalog` returns candidates. If several come back, describe them and ask which.
+- Catalog prices are in **US dollars** (e.g. "$4.00"). You may state a price if asked, but
+  never change or negotiate it — pricing is the desk's job.
 - `check_stock` before drafting. If stock is short, say the available quantity and ask.
 - `create_draft_order` takes the number and unit **separately** per item (e.g. amount `3`,
   unit `"dozen"`) plus the caller's exact words in `spoken_qty`. Never send a piece count.

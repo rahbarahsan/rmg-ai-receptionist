@@ -27,7 +27,7 @@ def session() -> Iterator[Session]:
                 color="black",
                 size="M",
                 aliases=["black polo"],
-                unit_price=32000,
+                unit_price=400,
                 stock_pcs=480,
             )
         )
@@ -39,7 +39,7 @@ def session() -> Iterator[Session]:
                 color="white",
                 size="M",
                 aliases=["white tee"],
-                unit_price=18000,
+                unit_price=200,
                 stock_pcs=1200,
             )
         )
@@ -77,7 +77,8 @@ def test_create_draft_order(session: Session) -> None:
     )
     r = handlers.create_draft_order(session, data)
     assert r["ok"] is True
-    assert r["data"]["total_poisha"] == 36 * 32000  # type: ignore[index]
+    assert r["data"]["total_cents"] == 36 * 400  # type: ignore[index]
+    assert r["data"]["total"] == "$144.00"  # type: ignore[index]
     assert r["data"]["items"][0]["qty_pcs"] == 36  # type: ignore[index]
 
 
