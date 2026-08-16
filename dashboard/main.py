@@ -69,7 +69,7 @@ with Session(engine) as session:
             if o.reviewed_at:
                 st.write("**Reviewed:**", o.reviewed_at.strftime("%Y-%m-%d %H:%M UTC"))
 
-            if o.status == OrderStatus.DRAFT:
+            if o.status in (OrderStatus.DRAFT, OrderStatus.NEEDS_REVIEW):
                 approve, reject = st.columns(2)
                 if approve.button("✅ Approve", key=f"approve-{o.id}"):
                     o.status = OrderStatus.CONFIRMED
