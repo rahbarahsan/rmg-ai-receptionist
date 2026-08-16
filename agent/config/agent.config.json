@@ -4,7 +4,7 @@
   "locale": "en",
   "prompt_file": "agent/prompts/system.en.md",
   "llm": "gpt-4o-mini",
-  "first_message": "Hello, thank you for calling the reorder line. Which shop am I speaking with?",
+  "first_message": "Hello, thank you for calling. May I have your name and shop, please?",
   "voice": {
     "voice_id": "r1KmysJdVYZjJCm4mL3b",
     "model": "eleven_turbo_v2"
