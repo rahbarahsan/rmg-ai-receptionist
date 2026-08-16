@@ -59,7 +59,12 @@ def main() -> None:
     prompt = (ROOT / config["prompt_file"]).read_text(encoding="utf-8")
     conversation_config = {
         "agent": {
-            "prompt": {"prompt": prompt, "llm": config["llm"]},
+            "prompt": {
+                "prompt": prompt,
+                "llm": config["llm"],
+                # Built-in system tool so the agent can hang up once the call is done.
+                "tools": [{"type": "system", "name": "end_call", "description": ""}],
+            },
             "first_message": config.get("first_message", ""),
             "language": config.get("locale", "en"),
         },
