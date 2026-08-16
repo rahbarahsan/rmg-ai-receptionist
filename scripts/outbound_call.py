@@ -77,10 +77,10 @@ def main() -> int:
         print(f"outbound-call {resp.status_code}: {resp.text[:400]}", file=sys.stderr)
         return 1
     data = resp.json()
-    print(
-        f"success={data.get('success')} conversation_id={data.get('conversation_id')} "
-        f"callSid={data.get('callSid')}"
-    )
+    if not data.get("success"):
+        print(f"FAILED: {data.get('message')}", file=sys.stderr)
+        return 1
+    print(f"success conversation_id={data.get('conversation_id')} callSid={data.get('callSid')}")
     return 0
 
 
