@@ -31,26 +31,39 @@ uv run streamlit run dashboard/main.py --server.headless true --server.port 8501
 
 ## Pick the language (sync the agent)
 `LANGUAGE_LOCALE` selects which agent to build **and** which one the phone number answers
-with. Whichever you sync **last** owns the number. Pass the tunnel URL so the agent's
-tools point at your app:
+with. Whichever you sync **last** owns the number.
 
+> ⚠️ **Always pass `PUBLIC_BASE_URL` on the same line.** The order tools need the public
+> webhook URL, so without it a *fresh* sync gives the agent only `end_call` — it can talk
+> but can't take an order (nothing reaches the dashboard). Copy the whole line, including
+> the `PUBLIC_BASE_URL=…` prefix — don't copy just the `uv run …` part.
+> (Safety net: on a sync that *updates* an existing agent, the script now **preserves the
+> order tools already attached** even if you forget the URL — but it can't attach them the
+> first time, and the URL will be stale until you re-sync after a tunnel restart.)
+
+Single line each — run whichever language you want:
 ```bash
-# English
-LANGUAGE_LOCALE=en PUBLIC_BASE_URL=https://<your-tunnel>.trycloudflare.com \
-  uv run python scripts/sync_agent.py
-
-# Bangla / Banglish
-LANGUAGE_LOCALE=bn PUBLIC_BASE_URL=https://<your-tunnel>.trycloudflare.com \
-  uv run python scripts/sync_agent.py
+LANGUAGE_LOCALE=en PUBLIC_BASE_URL=https://<your-tunnel>.trycloudflare.com uv run python scripts/sync_agent.py
+LANGUAGE_LOCALE=bn PUBLIC_BASE_URL=https://<your-tunnel>.trycloudflare.com uv run python scripts/sync_agent.py
 ```
 - The **first** `bn` sync prints `ELEVENLABS_AGENT_ID_BN=…` — add it to `.env` so later
   syncs update that agent instead of creating a new one. (`en` uses `ELEVENLABS_AGENT_ID`.)
-- **Toggle languages** by re-running with the other `LANGUAGE_LOCALE`.
+- **Toggle languages** by re-running with the other `LANGUAGE_LOCALE`. Any sync (even a
+  bare one) re-points the number at the locale it ran, so don't run it unless you mean to
+  switch the live number.
 
 ## When to re-sync
 - After editing a prompt (`agent/prompts/system.{en,bn}.md`) or `agent/config/agent.config.json`.
-- **After restarting the tunnel** (new URL) — re-sync the active locale so the tool
-  webhooks point at the new tunnel URL.
+- **After restarting the tunnel** (new URL) — re-sync the active locale **with the new
+  `PUBLIC_BASE_URL`** so the tool webhooks point at the live tunnel.
+
+## Verify the agent has its tools (after any sync)
+An agent with 0 order tools can greet but never drafts an order. Quick check:
+```bash
+uv run python scripts/verify_elevenlabs.py     # or GET /v1/convai/agents/{id} and count prompt.tool_ids
+```
+Expect **4** tools (`search_catalog`, `check_stock`, `create_draft_order`, `escalate_to_human`).
+If it's 0, re-sync that locale **with `PUBLIC_BASE_URL`**.
 
 ## Recover after the stack goes down
 The DB persists; only the processes need restarting:
