@@ -1,9 +1,12 @@
-"""Send the final offer to the shop owner by SMS (Twilio) or email (Resend).
+"""Send the final offer to the shop owner by SMS (Twilio) or email (Gmail SMTP).
 
-Plain httpx REST, no SDKs. Called when a human approves an order. Never raises for a
-provider error; returns a SendResult the caller can surface.
+SMS via the Twilio REST API; email via Gmail SMTP with an App Password. Called when a
+human approves an order. Never raises for a provider error; returns a SendResult.
 """
 
+import base64
+import smtplib
+from email.message import EmailMessage
 from typing import NamedTuple
 
 import httpx
@@ -61,21 +64,31 @@ def send_sms(to: str, body: str) -> SendResult:
 
 
 def send_email(to: str, subject: str, body: str) -> SendResult:
-    # Resend. from = offer_from_email, else onboarding@resend.dev (Resend's no-domain test
-    # sender — in that mode you can only send to your own Resend account email).
-    key = settings.resend_api_key
-    sender = settings.offer_from_email or "onboarding@resend.dev"
-    if not key:
-        return SendResult(False, "Resend not configured (RESEND_API_KEY)")
-    resp = httpx.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {key}", "content-type": "application/json"},
-        json={"from": sender, "to": [to], "subject": subject, "text": body},
-        timeout=20,
-    )
-    if resp.status_code >= 400:
-        return SendResult(False, f"Resend {resp.status_code}: {resp.text[:200]}")
-    return SendResult(True, f"email sent to {to} (id {resp.json().get('id', '?')})")
+    # Gmail SMTP with a Google App Password (base64-encoded in .env). Sends from your
+    # Gmail to any recipient — no domain needed.
+    user = settings.gmail_address
+    pw_b64 = settings.gmail_app_password_b64
+    if not (user and pw_b64):
+        return SendResult(
+            False, "Gmail SMTP not configured (GMAIL_ADDRESS + GMAIL_APP_PASSWORD_B64)"
+        )
+    try:
+        password = base64.b64decode(pw_b64).decode().strip()
+    except (ValueError, UnicodeDecodeError):
+        return SendResult(False, "GMAIL_APP_PASSWORD_B64 is not valid base64")
+
+    message = EmailMessage()
+    message["From"] = user
+    message["To"] = to
+    message["Subject"] = subject
+    message.set_content(body)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as server:
+            server.login(user, password)
+            server.send_message(message)
+    except (smtplib.SMTPException, OSError) as exc:
+        return SendResult(False, f"Gmail SMTP error: {exc}")
+    return SendResult(True, f"email sent to {to} via Gmail")
 
 
 def send_offer(session: Session, order: Order) -> SendResult:

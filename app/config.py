@@ -23,13 +23,12 @@ class Settings(BaseSettings):
     demo_caller_phone: str | None = None
     demo_shop_name: str | None = None
     # Sending the final offer. SMS via Twilio (Account SID + Auth Token + a number);
-    # email via Resend (API key; from = offer_from_email, or onboarding@resend.dev for the
-    # no-domain test sender).
+    # email via Gmail SMTP (your address + a Google App Password, base64-encoded in .env).
     twilio_account_sid: str | None = None
     twilio_auth_token: str | None = None
     twilio_phone_number: str | None = None
-    resend_api_key: str | None = None
-    offer_from_email: str | None = None
+    gmail_address: str | None = None
+    gmail_app_password_b64: str | None = None
     default_locale: str = "en"
 
     @property
