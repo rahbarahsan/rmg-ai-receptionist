@@ -105,3 +105,19 @@ and `create_draft_order` return a formatted `"$"` string so the agent reads it n
 which sounds absurd; USD is clearer for the current demo audience.
 **Cost:** diverges from the original BDT framing — revisit when localizing for the real
 Bangladeshi market. The integer-minor-unit discipline (no floats) carries over unchanged.
+
+## 2026-08-17 — Banglish path is a locale layer; Bengali TTS needs eleven_v3 (gated)
+
+**Decision:** Bangla is added as a **locale layer, not a fork** (invariant 6): two agents
+(en + bn) share one number, backend, tools, and catalog; only the prompt + TTS/ASR config
+differ. `agent.config.json` holds shared fields + a `locales` map; `LANGUAGE_LOCALE` drives
+`scripts/sync_agent.py`, which builds that locale's agent and reassigns the number to it
+(`PATCH /v1/convai/phone-numbers/{id}`). Quantities stay LLM-interpreted with a mandatory
+explicit Banglish read-back (unit + pieces). A deterministic Banglish parser is deferred.
+**Because:** the backend is already bilingual (Bengali catalog aliases, Bengali units in
+`app/bangla/units.py`, verbatim `spoken_qty`), so only conversation config changes.
+**Cost / blocker:** the Bengali agent's TTS must be **`eleven_v3`** — verified via
+`GET /v1/models` that it is the *only* model listing `bn` (turbo/flash/multilingual_v2 all
+reject `language: bn`). `eleven_v3` is "Expressive TTS", gated by plan — our account returns
+`expressive_tts_not_allowed`, so the **bn agent cannot be created until eleven_v3 is
+enabled** on the account. All code is complete; the English path is unaffected.

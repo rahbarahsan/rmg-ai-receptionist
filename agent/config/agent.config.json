@@ -1,25 +1,20 @@
 {
-  "_comment": "Source of truth for the ElevenLabs agent. Pushed by scripts/sync-agent.ts. Verify every field name against current ElevenLabs docs before the first sync — this file is a plan, not a validated payload.",
+  "_comment": "Source of truth for the ElevenLabs agents, pushed by scripts/sync_agent.py. Shared fields + a per-locale map; LANGUAGE_LOCALE selects which locale to build and assign to the number. Verify field names against current ElevenLabs docs (Invariant 7).",
   "name": "reorder-line",
-  "locale": "en",
-  "prompt_file": "agent/prompts/system.en.md",
   "llm": "gpt-4o-mini",
-  "first_message": "Hello, thank you for calling. May I have your name and shop, please?",
-  "voice": {
-    "voice_id": "r1KmysJdVYZjJCm4mL3b",
-    "model": "eleven_turbo_v2"
-  },
-  "conversation": {
-    "max_duration_seconds": 420,
-    "silence_hangup_seconds": 20,
-    "interruptible": true
-  },
-  "tools": [
-    { "name": "lookup_customer", "url": "/api/agent/tools/lookup_customer" },
-    { "name": "search_catalog", "url": "/api/agent/tools/search_catalog" },
-    { "name": "check_stock", "url": "/api/agent/tools/check_stock" },
-    { "name": "create_draft_order", "url": "/api/agent/tools/create_draft_order" },
-    { "name": "get_order_status", "url": "/api/agent/tools/get_order_status" },
-    { "name": "escalate_to_human", "url": "/api/agent/tools/escalate_to_human" }
-  ]
+  "voice_id": "r1KmysJdVYZjJCm4mL3b",
+  "locales": {
+    "en": {
+      "prompt_file": "agent/prompts/system.en.md",
+      "language": "en",
+      "tts_model": "eleven_turbo_v2",
+      "first_message": "Hello, thank you for calling. May I have your name and shop, please?"
+    },
+    "bn": {
+      "prompt_file": "agent/prompts/system.bn.md",
+      "language": "bn",
+      "tts_model": "eleven_v3",
+      "first_message": "আসসালামু আলাইকুম, অর্ডার লাইনে ফোন করার জন্য ধন্যবাদ। আপনার নাম আর দোকানের নামটা বলবেন please?"
+    }
+  }
 }

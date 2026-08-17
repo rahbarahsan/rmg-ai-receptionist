@@ -17,7 +17,14 @@ from typing import Any
 
 import httpx
 
-_ENV_KEYS = {"ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "PUBLIC_BASE_URL", "AGENT_TOOL_SECRET"}
+_ENV_KEYS = {
+    "ELEVENLABS_API_KEY",
+    "ELEVENLABS_AGENT_ID",
+    "ELEVENLABS_AGENT_ID_BN",
+    "PUBLIC_BASE_URL",
+    "AGENT_TOOL_SECRET",
+    "LANGUAGE_LOCALE",
+}
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "agent" / "config" / "agent.config.json"
@@ -25,6 +32,7 @@ ENV_PATH = ROOT / ".env"
 API_ROOT = "https://api.elevenlabs.io/v1"
 AGENTS = f"{API_ROOT}/convai/agents"
 TOOLS = f"{API_ROOT}/convai/tools"
+PHONE_NUMBERS = f"{API_ROOT}/convai/phone-numbers"
 
 
 def load_env() -> dict[str, str]:
@@ -190,30 +198,62 @@ def sync_tools(api_key: str, configs: list[dict[str, Any]]) -> list[str]:
     return ids
 
 
+def get_locale(env: dict[str, str]) -> str:
+    args = sys.argv[1:]
+    if "--locale" in args:
+        i = args.index("--locale")
+        if i + 1 < len(args):
+            return args[i + 1]
+    return env.get("LANGUAGE_LOCALE", "en")
+
+
+def assign_number(api_key: str, agent_id: str) -> None:
+    headers = {"xi-api-key": api_key, "content-type": "application/json"}
+    listing = httpx.get(PHONE_NUMBERS, headers=headers, timeout=30).json()
+    items = listing if isinstance(listing, list) else listing.get("phone_numbers", [])
+    twilio = [n for n in items if isinstance(n, dict) and n.get("provider") == "twilio"]
+    if not twilio:
+        print("  no Twilio number imported — assign it in the dashboard once.")
+        return
+    number = twilio[0]
+    resp = httpx.patch(
+        f"{PHONE_NUMBERS}/{number['phone_number_id']}",
+        headers=headers,
+        json={"agent_id": agent_id},
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        print(f"  number reassign failed: {resp.status_code} {resp.text[:200]}")
+    else:
+        print(f"  {number.get('phone_number')} now answers with this agent")
+
+
 def main() -> None:
     env = load_env()
-    # Real shell env overrides .env for these keys (handy for an ephemeral tunnel URL).
+    # Real shell env overrides .env for these keys (handy for an ephemeral tunnel URL / locale).
     env.update({k: v for k, v in os.environ.items() if k in _ENV_KEYS})
     api_key = env.get("ELEVENLABS_API_KEY")
     if not api_key:
         fail("ELEVENLABS_API_KEY is not set in .env")
 
     config: dict[str, Any] = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    voice: dict[str, Any] = config.get("voice", {})
-    todos = [
-        v
-        for v in (voice.get("voice_id"), voice.get("model"), config.get("llm"))
-        if isinstance(v, str) and v.startswith("TODO")
-    ]
-    if todos:
-        fail("fill voice.voice_id, voice.model, and llm in agent.config.json (still TODO)")
+    locale = get_locale(env)
+    locales: dict[str, Any] = config.get("locales", {})
+    if locale not in locales:
+        fail(f"unknown locale '{locale}' — config has: {', '.join(locales) or '(none)'}")
+    loc: dict[str, Any] = locales[locale]
 
-    prompt = (ROOT / config["prompt_file"]).read_text(encoding="utf-8")
+    voice_id = config.get("voice_id", "")
+    if not isinstance(voice_id, str) or voice_id.startswith("TODO"):
+        fail("set voice_id in agent.config.json")
+
+    print(f"Locale: {locale}")
+    prompt = (ROOT / loc["prompt_file"]).read_text(encoding="utf-8")
     prompt_block: dict[str, Any] = {
         "prompt": prompt,
         "llm": config["llm"],
-        # end_call is a built-in system tool — a separate field from tool_ids, and must
-        # NOT be sent via the deprecated inline `tools` field (which can't mix with tool_ids).
+        # end_call is a built-in system tool — separate from tool_ids, and NOT sent via the
+        # deprecated inline `tools` field (which can't mix with tool_ids).
         "built_in_tools": {"end_call": {"type": "system", "name": "end_call", "description": ""}},
         "tool_ids": [],
     }
@@ -229,19 +269,20 @@ def main() -> None:
     conversation_config = {
         "agent": {
             "prompt": prompt_block,
-            "first_message": config.get("first_message", ""),
-            "language": config.get("locale", "en"),
+            "first_message": loc.get("first_message", ""),
+            "language": loc.get("language", locale),
         },
-        "tts": {"voice_id": voice["voice_id"], "model_id": voice["model"]},
+        "tts": {"voice_id": voice_id, "model_id": loc["tts_model"]},
     }
 
-    agent_id = env.get("ELEVENLABS_AGENT_ID")
+    id_key = "ELEVENLABS_AGENT_ID" if locale == "en" else f"ELEVENLABS_AGENT_ID_{locale.upper()}"
+    agent_id = env.get(id_key)
     is_update = bool(agent_id)
     url = f"{AGENTS}/{agent_id}" if is_update else f"{AGENTS}/create"
     payload = (
         {"conversation_config": conversation_config}
         if is_update
-        else {"name": config["name"], "conversation_config": conversation_config}
+        else {"name": f"{config['name']}-{locale}", "conversation_config": conversation_config}
     )
 
     resp = httpx.request(
@@ -257,9 +298,11 @@ def main() -> None:
     data = resp.json()
     new_id = data.get("agent_id") if isinstance(data, dict) else None
     ident = new_id or agent_id
-    print(f"{'Updated' if is_update else 'Created'} agent {ident}")
+    print(f"{'Updated' if is_update else 'Created'} {locale} agent {ident}")
     if not is_update and new_id:
-        print(f"Add ELEVENLABS_AGENT_ID={new_id} to .env so future syncs update in place.")
+        print(f"Add {id_key}={new_id} to .env so future syncs update in place.")
+    if isinstance(ident, str):
+        assign_number(api_key, ident)
 
 
 if __name__ == "__main__":
