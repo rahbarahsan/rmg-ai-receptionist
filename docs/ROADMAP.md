@@ -1,82 +1,49 @@
 # Roadmap
 
-> Edit freely. This is your plan, not a contract. One phase per Claude Code session;
-> finish a phase's acceptance test before starting the next.
+> Edit freely. This is the plan, not a contract. Finish a phase's acceptance test
+> before starting the next. Commands are `uv run …` (see CLAUDE.md).
 
 ## Phase 0 — Scaffold ✅
-
-Repo, CLAUDE.md, context docs, schema, tool skeleton, empty tests.
-
-**Acceptance:** `pnpm typecheck && pnpm test` passes on an empty implementation.
-
----
+Repo, CLAUDE.md, context docs, schema, tool skeleton, tests.
 
 ## Phase 1 — The ASR spike ✅
+Measure how badly **numbers** and **product names** degrade on ElevenLabs STT before
+building on top of them.
+**Result (2026-08-15):** 19 Banglish clips on Scribe `scribe_v2` — number survival 83%
+exact / 89% any-form, unit 76%, product 44% exact. **PROCEED with mitigations** (see
+`DECISIONS.md`): whole numbers are robust; the only failures are no-cognate fractions fused
+to a short unit, which the mandatory quantity read-back catches. Raw data:
+`tests/fixtures/asr-spike-results.json`.
 
-Record 20 realistic Banglish reorder utterances. Run them through ElevenLabs agent
-STT. Measure how badly **numbers** and **product names** degrade.
+## Phase 2 — Python stack + one callable number ✅
+Rewrote the app from TypeScript/Next.js to Python/FastAPI (see `DECISIONS.md`). A real
+Twilio number answers via an ElevenLabs agent; agent config + prompts live in the repo and
+are pushed by `scripts/sync_agent.py`.
 
-**Acceptance:** `tests/fixtures/banglish-utterances.json` filled with real
-transcriptions and a measured error rate written into `docs/DECISIONS.md`.
+## Phase 3 — Tools and the draft order ✅
+`search_catalog`, `check_stock`, `create_draft_order`, `escalate_to_human` (+ a latent
+`lookup_customer` for repeat callers). Mandatory read-back before drafting.
+**Acceptance met:** a call produces a `DRAFT` with correct items and quantities.
 
-**Result (2026-08-15):** 19/20 clips measured on Scribe `scribe_v2`. Number survival
-83% exact / 89% any-form, unit 76%, product 44% exact. **Call: PROCEED with mitigations**
-(see DECISIONS). Whole numbers robust; only failures are no-cognate fractions fused to a
-short unit (পিস/হালি). Harness: `pnpm asr:spike` (`scripts/asr-spike.ts`), raw data in
-`tests/fixtures/asr-spike-results.json`. Follow-ups: re-record missing clip 09; the
-mandatory quantity read-back must be explicit for fractions/units.
+## Phase 4 — Human approval + the final offer ✅
+Streamlit operator dashboard lists drafts. Approve → `CONFIRMED` → send the itemised, priced
+offer to the shop owner by **SMS (Twilio)** or **email (Gmail SMTP)**, in the caller's
+language.
+**Acceptance met:** call → draft → approve → offer delivered.
 
-Why first: if Bangla ASR cannot hold numbers, every later phase is built on sand.
-Finding that out on day one is a good outcome, not a failure.
-
----
-
-## Phase 2 — One callable number, English
-
-A real phone number that answers, identifies a known caller, and hangs up politely.
-No ordering yet.
-
-**Acceptance:** you can call it from your phone and hear your own shop name.
-
-**Status (2026-08-15):** Stack re-ported to Python/FastAPI (see DECISIONS); old TS app
-in `legacy-ts/`. Phase-2 code is built + verified offline — the conversation-init webhook
-(greet by shop name), post-call `CallLog` (hashed phone), `lookup_customer` tool, and
-`sync_agent.py`; ruff/mypy/pytest all green. **Not yet live**: needs voice_id/model/llm in
-`agent.config.json`, a valid `AGENT_TOOL_SECRET` in `.env`, the Alembic migration run
-against Postgres, and the Twilio number + two webhook URLs wired in the dashboard.
+## Phase 5 — Banglish ✅
+Bangla/Banglish agent as a **locale layer, not a fork** (one number toggles languages via
+`scripts/serve.py`). Bengali TTS via `eleven_v3_conversational`. Bengali catalog aliases +
+units resolve; read-back restated in the caller's unit. Language-varying data lives in
+`app/locale/registry.py` — adding a language is three data edits (see `EXTENDING.md`).
 
 ---
 
-## Phase 3 — Tools and the draft order
-
-`lookup_customer`, `search_catalog`, `check_stock`, `create_draft_order`,
-`get_order_status`, `escalate_to_human`. Read-back before drafting.
-
-**Acceptance:** a call produces a `DRAFT` row with correct items and quantities.
-
----
-
-## Phase 4 — Human approval and the final offer email
-
-Dashboard list of drafts. Approve → status `CONFIRMED` → email the final offer
-(itemised, priced, with delivery terms) to the shop owner.
-
-**Acceptance:** end-to-end call → draft → approve → email received.
-
----
-
-## Phase 5 — Bangla
-
-Bangla system prompt, numeral normalization, unit handling, Bangla read-back.
-Golden utterance set must pass.
-
-**Acceptance:** the Phase 4 flow completes entirely in Bangla.
-
----
-
-## Phase 6 — The write-up
-
-Demo video, README with architecture, honest limitations section, measured latency
-and ASR numbers. This is the deliverable that gets read.
-
-**Acceptance:** a stranger can understand what you built and what it cannot do.
+## Next
+- **Deterministic Banglish numeral parser** (`app/locale/` + un-skip the
+  `banglish-utterances.json` golden set) — hardens fraction handling beyond LLM + read-back.
+- **Data-model localization** — per-locale product names / a translations table, for real
+  multi-language catalogs at scale (seams are in place; not yet built).
+- **Repeat-caller recognition** — wire the personalization webhook + `lookup_customer` so a
+  known number is greeted by shop name.
+- **The write-up** — demo video + measured latency/ASR numbers in the README.

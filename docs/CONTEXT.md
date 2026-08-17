@@ -36,9 +36,11 @@ If the scope drifts back toward export manufacturing, stop and re-read this sect
 
 The agent owns everything up to `DRAFT`. A human owns the rest.
 
-## Current phase
+## Current status
 
-**Phase 0 — scaffold.** Nothing works yet. See `docs/ROADMAP.md`.
+The end-to-end flow works in English **and** Banglish: call → draft → human approval →
+offer by SMS/email in the caller's language. See `docs/ROADMAP.md` for phase detail and
+what's next.
 
 ## Language plan
 

@@ -3,10 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Environment configuration. Mirrors the old src/lib/env.ts contract.
+    """Environment configuration, loaded from .env at import.
 
-    Loaded from .env at import. Required vars (database_url, agent_tool_secret)
-    raise at startup if missing — the same fail-fast behaviour as before.
+    Required vars (database_url, agent_tool_secret) raise at startup if missing, so a
+    misconfigured deploy fails fast rather than at the first call.
     """
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_url(self) -> str:
-        """Prisma-style URLs use the bare `postgresql://`; SQLAlchemy needs a driver."""
+        """A bare `postgresql://` URL gets the psycopg driver SQLAlchemy needs."""
         url = self.database_url
         if url.startswith("postgresql://"):
             return url.replace("postgresql://", "postgresql+psycopg://", 1)
