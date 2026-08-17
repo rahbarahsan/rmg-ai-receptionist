@@ -3,6 +3,32 @@
 How to stand the system up, switch between the English and Bangla agents, and recover
 after the machine/stack goes down. Ports: app `8000`, dashboard `8501`.
 
+## Quick start — one command
+
+```bash
+uv run python scripts/serve.py        # English (default)
+uv run python scripts/serve.py bn     # Bangla / Banglish
+```
+
+This is the everyday path. It starts the app, opens the tunnel, **reads the tunnel URL
+for you**, syncs that language's agent + order tools, and points the phone number at it —
+then holds it all open. **Ctrl+C** stops. To **switch languages**, stop it and re-run with
+the other locale. You never copy a tunnel URL or set an env var by hand.
+
+The dashboard (order review) is separate — start it once in its own terminal:
+```bash
+uv run streamlit run dashboard/main.py --server.headless true --server.port 8501
+```
+
+Needs `cloudflared` — found on PATH, else `$CLOUDFLARED_PATH`, else `.tools/cloudflared.exe`.
+Install once with `winget install --id Cloudflare.cloudflared`.
+
+> First `bn` run: add the printed `ELEVENLABS_AGENT_ID_BN=…` to `.env` so it updates that
+> agent in place instead of creating a new one.
+
+The rest of this doc is the **manual breakdown** — useful for debugging, or if you want to
+run the pieces yourself. `serve.py` just automates all of it.
+
 ## The pieces
 | Piece | Command | Notes |
 |---|---|---|
