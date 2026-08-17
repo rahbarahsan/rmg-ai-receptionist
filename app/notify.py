@@ -1,9 +1,7 @@
-"""Send the final offer to the shop owner by SMS or email — both via Twilio.
+"""Send the final offer to the shop owner by SMS (Twilio) or email (Resend).
 
-SMS uses the Twilio Messages API; email uses Twilio's native Email API
-(comms.twilio.com), both authenticated with the same Account SID + Auth Token — no
-SendGrid key. Plain httpx REST, no SDKs. Called when a human approves an order. Never
-raises for a provider error; returns a SendResult the caller can surface.
+Plain httpx REST, no SDKs. Called when a human approves an order. Never raises for a
+provider error; returns a SendResult the caller can surface.
 """
 
 from typing import NamedTuple
@@ -63,26 +61,21 @@ def send_sms(to: str, body: str) -> SendResult:
 
 
 def send_email(to: str, subject: str, body: str) -> SendResult:
-    # Twilio's native Email API (comms.twilio.com) — same Account SID + Auth Token as SMS,
-    # no separate SendGrid key. Needs a verified sender (OFFER_FROM_EMAIL) set up in Twilio.
-    sid = settings.twilio_account_sid
-    token = settings.twilio_auth_token
-    sender = settings.offer_from_email
-    if not (sid and token and sender):
-        return SendResult(False, "Twilio email not configured (TWILIO creds + OFFER_FROM_EMAIL)")
+    # Resend. from = offer_from_email, else onboarding@resend.dev (Resend's no-domain test
+    # sender — in that mode you can only send to your own Resend account email).
+    key = settings.resend_api_key
+    sender = settings.offer_from_email or "onboarding@resend.dev"
+    if not key:
+        return SendResult(False, "Resend not configured (RESEND_API_KEY)")
     resp = httpx.post(
-        "https://comms.twilio.com/v1/Emails",
-        auth=(sid, token),
-        json={
-            "from": {"address": sender},
-            "to": [{"address": to}],
-            "content": {"subject": subject, "text": body},
-        },
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {key}", "content-type": "application/json"},
+        json={"from": sender, "to": [to], "subject": subject, "text": body},
         timeout=20,
     )
     if resp.status_code >= 400:
-        return SendResult(False, f"Twilio Email {resp.status_code}: {resp.text[:200]}")
-    return SendResult(True, f"email queued to {to}")
+        return SendResult(False, f"Resend {resp.status_code}: {resp.text[:200]}")
+    return SendResult(True, f"email sent to {to} (id {resp.json().get('id', '?')})")
 
 
 def send_offer(session: Session, order: Order) -> SendResult:
