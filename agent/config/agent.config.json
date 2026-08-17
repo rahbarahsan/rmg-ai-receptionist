@@ -13,7 +13,7 @@
     "bn": {
       "prompt_file": "agent/prompts/system.bn.md",
       "language": "bn",
-      "tts_model": "eleven_v3",
+      "tts_model": "eleven_v3_conversational",
       "first_message": "আসসালামু আলাইকুম, অর্ডার লাইনে ফোন করার জন্য ধন্যবাদ। আপনার নাম আর দোকানের নামটা বলবেন please?"
     }
   }

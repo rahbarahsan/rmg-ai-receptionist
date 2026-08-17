@@ -118,6 +118,10 @@ explicit Banglish read-back (unit + pieces). A deterministic Banglish parser is 
 `app/bangla/units.py`, verbatim `spoken_qty`), so only conversation config changes.
 **Cost / blocker:** the Bengali agent's TTS must be **`eleven_v3`** — verified via
 `GET /v1/models` that it is the *only* model listing `bn` (turbo/flash/multilingual_v2 all
-reject `language: bn`). `eleven_v3` is "Expressive TTS", gated by plan — our account returns
-`expressive_tts_not_allowed`, so the **bn agent cannot be created until eleven_v3 is
-enabled** on the account. All code is complete; the English path is unaffected.
+reject `language: bn`). `eleven_v3` is "Expressive TTS", initially gated (`expressive_tts_not_allowed`).
+**Resolved 2026-08-17:** after Expressive TTS was enabled, direct v3 TTS worked but the
+convai *agent* still rejected `eleven_v3` — the correct **agent** model id is
+**`eleven_v3_conversational`**, which is accepted with `language: bn`. The bn agent
+(`eleven_v3_conversational`) is live; the number toggles between en/bn via
+`LANGUAGE_LOCALE`. (Free-plan note: library voices are blocked on the direct TTS API but
+work inside the agent.)
