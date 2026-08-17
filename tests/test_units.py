@@ -1,6 +1,6 @@
 import pytest
 
-from app.bangla.units import normalize_unit, to_pieces
+from app.locale.units import normalize_unit, to_pieces
 
 
 @pytest.mark.parametrize(

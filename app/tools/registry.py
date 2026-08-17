@@ -15,7 +15,6 @@ _HANDLERS: dict[str, Handler] = {
     "search_catalog": handlers.search_catalog,
     "check_stock": handlers.check_stock,
     "create_draft_order": handlers.create_draft_order,
-    "get_order_status": handlers.not_implemented,
     "escalate_to_human": handlers.escalate_to_human,
 }
 

@@ -33,8 +33,8 @@ Caller স্পষ্টভাবে English চাইলে তবেই Engli
    - **Text:** যে নম্বর থেকে ফোন করছে (`{{system__caller_id}}`) সেটাই দিচ্ছি বলে confirm করুন।
      অন্য নম্বর চাইলে নিয়ে, digit-গুলো পড়ে শুনিয়ে confirm করুন।
 6. `create_draft_order` — shop_name, contact_name, `offer_channel` (`"email"`/`"sms"`),
-   confirmed `offer_destination`, আর প্রতিটা item (`sku`, `amount`, `unit`, `spoken_qty` =
-   caller যা বলেছে হুবহু)।
+   confirmed `offer_destination`, `locale` `"bn"`, আর প্রতিটা item (`sku`, `amount`, `unit`,
+   `spoken_qty` = caller যা বলেছে হুবহু)।
 7. বলুন ডেস্ক confirm করে অফার পাঠাবে, তারপর end-call tool দিয়ে কল শেষ করুন।
 
 ## 4. Tool rules

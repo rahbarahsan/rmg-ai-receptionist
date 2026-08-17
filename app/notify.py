@@ -13,6 +13,7 @@ import httpx
 from sqlmodel import Session, select
 
 from app.config import settings
+from app.locale.registry import OfferData, OfferLine, get_locale
 from app.models import Customer, Order, OrderItem, Product
 
 
@@ -21,26 +22,32 @@ class SendResult(NamedTuple):
     detail: str
 
 
-def _usd(cents: int) -> str:
-    return f"${cents / 100:,.2f}"
+def _product_name(product: Product | None, locale_code: str, fallback: str) -> str:
+    if product is None:
+        return fallback
+    if locale_code == "bn" and product.name_bn:
+        return product.name_bn
+    return product.name_en
 
 
 def format_offer(session: Session, order: Order, customer: Customer | None) -> str:
-    shop = customer.shop_name if customer else "your shop"
-    lines = [f"RMG Wholesale — order for {shop}", ""]
-    for it in session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all():
-        product = session.get(Product, it.product_id)
-        name = product.name_en if product else it.product_id
-        line_total = it.qty_pcs * it.unit_price_cents
-        lines.append(
-            f"- {it.qty_pcs} pcs {name} @ {_usd(it.unit_price_cents)} = {_usd(line_total)}"
+    """Render the written offer in the customer's language via the locale registry."""
+    locale = get_locale(customer.locale if customer else None)
+    offer_lines = [
+        OfferLine(
+            qty_pcs=it.qty_pcs,
+            name=_product_name(session.get(Product, it.product_id), locale.code, it.product_id),
+            unit_price_cents=it.unit_price_cents,
         )
-    lines.append("")
-    lines.append(f"Total: {_usd(order.total_cents)}")
-    if order.delivery_note:
-        lines.append(f"Delivery: {order.delivery_note}")
-    lines.append("The sales desk will confirm delivery and payment terms shortly.")
-    return "\n".join(lines)
+        for it in session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
+    ]
+    data = OfferData(
+        shop=customer.shop_name if customer else "your shop",
+        lines=offer_lines,
+        total_cents=order.total_cents,
+        delivery_note=order.delivery_note,
+    )
+    return locale.render_offer(data)
 
 
 def send_sms(to: str, body: str) -> SendResult:
@@ -69,9 +76,7 @@ def send_email(to: str, subject: str, body: str) -> SendResult:
     user = settings.gmail_address
     pw_b64 = settings.gmail_app_password
     if not (user and pw_b64):
-        return SendResult(
-            False, "Gmail SMTP not configured (GMAIL_ADDRESS + GMAIL_APP_PASSWORD)"
-        )
+        return SendResult(False, "Gmail SMTP not configured (GMAIL_ADDRESS + GMAIL_APP_PASSWORD)")
     try:
         password = base64.b64decode(pw_b64).decode().strip()
     except (ValueError, UnicodeDecodeError):
@@ -102,6 +107,7 @@ def send_offer(session: Session, order: Order) -> SendResult:
     if channel == "sms":
         return send_sms(destination, body)
     if channel == "email":
+        locale = get_locale(customer.locale if customer else None)
         shop = customer.shop_name if customer else "RMG"
-        return send_email(destination, f"Your order — {shop}", body)
+        return send_email(destination, locale.offer_subject(shop), body)
     return SendResult(False, f"unknown channel '{channel}'")

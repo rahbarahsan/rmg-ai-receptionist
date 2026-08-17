@@ -116,6 +116,11 @@ def tool_defs(base_url: str, secret: str) -> list[dict[str, Any]]:
                         "type": "string",
                         "description": "the confirmed email address or phone number",
                     },
+                    "locale": {
+                        "type": "string",
+                        "enum": ["en", "bn"],
+                        "description": "the language you speak, so the offer matches",
+                    },
                     "delivery_note": {"type": "string", "description": "any delivery instruction"},
                     "items": {
                         "type": "array",
@@ -285,8 +290,10 @@ def main() -> None:
         if existing:
             print(f"PUBLIC_BASE_URL not set — kept {len(existing)} existing order tools.")
         else:
-            print("PUBLIC_BASE_URL not set and agent has no order tools — end_call only. "
-                  "Re-run with PUBLIC_BASE_URL=<tunnel> to attach them.")
+            print(
+                "PUBLIC_BASE_URL not set and agent has no order tools — end_call only. "
+                "Re-run with PUBLIC_BASE_URL=<tunnel> to attach them."
+            )
     else:
         print("PUBLIC_BASE_URL or AGENT_TOOL_SECRET not set — order tools skipped (end_call only).")
 

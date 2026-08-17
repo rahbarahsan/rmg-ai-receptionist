@@ -2,7 +2,7 @@
 
 Every handler takes a DB session + a validated Pydantic input and returns a ToolResult
 dict ({ok, data} | {ok, reason}). Invariants: never invent a SKU/price/stock; the agent
-only drafts; quantity→pieces conversion goes through app.bangla.units.
+only drafts; quantity→pieces conversion goes through app.locale.units.
 """
 
 import logging
@@ -11,8 +11,9 @@ import re
 from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
-from app.bangla.units import normalize_unit, to_pieces
+from app.config import settings
 from app.customers import lookup_customer_by_phone
+from app.locale.units import normalize_unit, to_pieces
 from app.models import Customer, Order, OrderItem, OrderStatus, Product
 from app.phone import normalize_phone
 from app.schemas import (
@@ -110,7 +111,10 @@ def check_stock(session: Session, data: BaseModel) -> ToolResult:
 def create_draft_order(session: Session, data: BaseModel) -> ToolResult:
     assert isinstance(data, CreateDraftOrderInput)
 
-    customer = _find_or_create_customer(session, data.shop_name, data.contact_name, data.phone)
+    locale = (data.locale or settings.default_locale).strip().lower()
+    customer = _find_or_create_customer(
+        session, data.shop_name, data.contact_name, data.phone, locale
+    )
     order = Order(
         customer_id=customer.id,
         status=OrderStatus.DRAFT,
@@ -182,22 +186,26 @@ def escalate_to_human(session: Session, data: BaseModel) -> ToolResult:
     return {"ok": True, "data": {"escalated": True, "reason": data.reason}}
 
 
-def not_implemented(session: Session, data: BaseModel) -> ToolResult:
-    return {"ok": False, "reason": "not implemented"}
-
-
 def _find_or_create_customer(
-    session: Session, shop_name: str, contact_name: str | None, phone: str | None
+    session: Session,
+    shop_name: str,
+    contact_name: str | None,
+    phone: str | None,
+    locale: str,
 ) -> Customer:
+    existing = None
     if phone:
         normalized = normalize_phone(phone)
-        by_phone = session.exec(select(Customer).where(Customer.phone == normalized)).first()
-        if by_phone is not None:
-            return by_phone
+        existing = session.exec(select(Customer).where(Customer.phone == normalized)).first()
+    if existing is None:
+        existing = session.exec(select(Customer).where(Customer.shop_name == shop_name)).first()
 
-    by_shop = session.exec(select(Customer).where(Customer.shop_name == shop_name)).first()
-    if by_shop is not None:
-        return by_shop
+    if existing is not None:
+        # Keep the caller's language current, so their written offer matches this call.
+        if locale and existing.locale != locale:
+            existing.locale = locale
+            session.add(existing)
+        return existing
 
     customer = Customer(
         # phone is unique + required; use a deterministic sentinel when the caller
@@ -205,6 +213,7 @@ def _find_or_create_customer(
         phone=normalize_phone(phone) if phone else f"unknown:{shop_name}",
         shop_name=shop_name,
         contact_name=contact_name,
+        locale=locale,
     )
     session.add(customer)
     session.flush()
