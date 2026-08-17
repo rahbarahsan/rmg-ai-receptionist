@@ -5,7 +5,7 @@ import time
 import pytest
 
 from app.config import settings
-from app.webhook_auth import verify_elevenlabs_signature
+from app.security import verify_elevenlabs_signature
 
 SECRET = "whsec_test_secret_value_123456"
 

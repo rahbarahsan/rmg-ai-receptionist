@@ -1,10 +1,29 @@
+"""Security helpers: authenticating the two inbound channels and hashing PII.
+
+- `verify_tool_secret` — the shared secret the agent sends on every tool call.
+- `verify_elevenlabs_signature` — HMAC on ElevenLabs webhooks (personalization, post-call).
+- `hash_phone` — one-way hash so logs/CallLog never store a raw number (CLAUDE.md inv. 8).
+"""
+
 import hashlib
 import hmac
 import time
 
 from app.config import settings
 
-TOLERANCE_SECONDS = 30 * 60
+WEBHOOK_TOLERANCE_SECONDS = 30 * 60
+
+
+def verify_tool_secret(header: str | None) -> bool:
+    """Constant-time check of the shared secret the agent sends on every tool call."""
+    if not header:
+        return False
+    return hmac.compare_digest(header, settings.agent_tool_secret)
+
+
+def hash_phone(phone: str) -> str:
+    """Phone numbers are PII. Logs and CallLog rows store this, never the raw number."""
+    return hashlib.sha256(phone.encode()).hexdigest()[:32]
 
 
 def verify_elevenlabs_signature(raw_body: bytes, header: str | None) -> bool:
@@ -38,7 +57,7 @@ def verify_elevenlabs_signature(raw_body: bytes, header: str | None) -> bool:
         ts = int(t)
     except ValueError:
         return False
-    if abs(time.time() - ts) > TOLERANCE_SECONDS:
+    if abs(time.time() - ts) > WEBHOOK_TOLERANCE_SECONDS:
         return False
 
     signed = f"{t}.".encode() + raw_body

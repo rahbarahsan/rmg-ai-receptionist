@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from app.auth import verify_tool_secret
+from app.security import verify_tool_secret
 from app.tools.registry import is_tool_name, run_tool
 
 logger = logging.getLogger("reorder.tools")
@@ -17,9 +17,9 @@ router = APIRouter()
 async def call_tool(tool: str, request: Request) -> JSONResponse:
     """One POST per tool. Shared-secret auth, JSON body validated by the tool's schema.
 
-    Contract (ported from the TS route): 401 unauthorized, 404 unknown tool, 400
-    unparseable JSON, else 200 even for `{ok: false}` results. Every response carries
-    an `x-tool-ms` latency header; warn if a handler blows the 500ms budget.
+    Contract: 401 unauthorized, 404 unknown tool, 400 unparseable JSON, else 200 even
+    for `{ok: false}` results. Every response carries an `x-tool-ms` latency header;
+    warn if a handler blows the 500ms budget.
     """
     if not verify_tool_secret(request.headers.get("x-agent-secret")):
         return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
