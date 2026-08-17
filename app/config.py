@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     twilio_auth_token: str | None = None
     twilio_phone_number: str | None = None
     gmail_address: str | None = None
-    gmail_app_password_b64: str | None = None
+    gmail_app_password: str | None = None  # base64-encoded Google App Password
     default_locale: str = "en"
 
     @property

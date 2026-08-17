@@ -67,10 +67,10 @@ def send_email(to: str, subject: str, body: str) -> SendResult:
     # Gmail SMTP with a Google App Password (base64-encoded in .env). Sends from your
     # Gmail to any recipient — no domain needed.
     user = settings.gmail_address
-    pw_b64 = settings.gmail_app_password_b64
+    pw_b64 = settings.gmail_app_password
     if not (user and pw_b64):
         return SendResult(
-            False, "Gmail SMTP not configured (GMAIL_ADDRESS + GMAIL_APP_PASSWORD_B64)"
+            False, "Gmail SMTP not configured (GMAIL_ADDRESS + GMAIL_APP_PASSWORD)"
         )
     try:
         password = base64.b64decode(pw_b64).decode().strip()
