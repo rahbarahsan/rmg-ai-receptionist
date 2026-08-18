@@ -1,4 +1,4 @@
-"""SQLModel tables — port of prisma/schema.prisma.
+"""SQLModel tables — the system's data model.
 
 Money is integer US cents (USD * 100), never floats. Quantities are pieces. `aliases`
 uses a JSON column (portable across Postgres and the sqlite used in tests) rather than
@@ -36,8 +36,8 @@ class Customer(SQLModel, table=True):
     shop_name: str
     contact_name: str | None = None
     market: str | None = None  # Islampur, New Market, ...
-    locale: str = "en"  # en | bn
-    credit_limit: int = 0  # poisha; 0 = cash only
+    locale: str = "en"  # language code from app.locale (en | bn | ...)
+    credit_limit: int = 0  # US cents; 0 = cash only
     is_blocked: bool = False
     created_at: datetime = Field(default_factory=_now)
 

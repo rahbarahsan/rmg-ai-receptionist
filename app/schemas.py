@@ -1,6 +1,6 @@
-"""Tool input schemas — Pydantic v2 port of src/lib/tools/schemas.ts.
+"""Tool input schemas — the validated contract for every agent tool call.
 
-Schema first, then handler, then test. Money is poisha, quantity is pieces.
+Schema first, then handler, then test. Money is integer US cents; quantity is pieces.
 """
 
 from typing import Literal
@@ -39,13 +39,11 @@ class CreateDraftOrderInput(BaseModel):
     # How the caller wants the final offer sent, collected + confirmed on the call.
     offer_channel: str | None = None  # "email" or "sms"
     offer_destination: str | None = None  # the confirmed email address or phone number
+    # The language the agent is speaking, so the written offer matches (see app.locale).
+    locale: str | None = None  # "en" | "bn"; defaults to settings.default_locale
     call_id: str | None = None
     delivery_note: str | None = Field(default=None, max_length=500)
     items: list[DraftItem] = Field(min_length=1)
-
-
-class GetOrderStatusInput(BaseModel):
-    order_id: str
 
 
 class EscalateInput(BaseModel):
@@ -67,6 +65,5 @@ TOOL_SCHEMAS: dict[str, type[BaseModel]] = {
     "search_catalog": SearchCatalogInput,
     "check_stock": CheckStockInput,
     "create_draft_order": CreateDraftOrderInput,
-    "get_order_status": GetOrderStatusInput,
     "escalate_to_human": EscalateInput,
 }

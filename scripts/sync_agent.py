@@ -116,6 +116,11 @@ def tool_defs(base_url: str, secret: str) -> list[dict[str, Any]]:
                         "type": "string",
                         "description": "the confirmed email address or phone number",
                     },
+                    "locale": {
+                        "type": "string",
+                        "enum": ["en", "bn"],
+                        "description": "the language you speak, so the offer matches",
+                    },
                     "delivery_note": {"type": "string", "description": "any delivery instruction"},
                     "items": {
                         "type": "array",
@@ -198,6 +203,16 @@ def sync_tools(api_key: str, configs: list[dict[str, Any]]) -> list[str]:
     return ids
 
 
+def get_agent_tool_ids(api_key: str, agent_id: str) -> list[str]:
+    """The order tools already attached to an existing agent, so a prompt-only sync
+    (no PUBLIC_BASE_URL) can preserve them instead of wiping them."""
+    resp = httpx.get(f"{AGENTS}/{agent_id}", headers={"xi-api-key": api_key}, timeout=30)
+    if resp.status_code >= 400:
+        return []
+    prompt = ((resp.json().get("conversation_config") or {}).get("agent") or {}).get("prompt") or {}
+    return [i for i in (prompt.get("tool_ids") or []) if isinstance(i, str)]
+
+
 def get_locale(env: dict[str, str]) -> str:
     args = sys.argv[1:]
     if "--locale" in args:
@@ -258,11 +273,27 @@ def main() -> None:
         "tool_ids": [],
     }
 
+    id_key = "ELEVENLABS_AGENT_ID" if locale == "en" else f"ELEVENLABS_AGENT_ID_{locale.upper()}"
+    agent_id = env.get(id_key)
+    is_update = bool(agent_id)
+
     base_url = env.get("PUBLIC_BASE_URL")
     tool_secret = env.get("AGENT_TOOL_SECRET")
     if base_url and tool_secret:
         prompt_block["tool_ids"] = sync_tools(api_key, tool_defs(base_url.rstrip("/"), tool_secret))
         print(f"Attached {len(prompt_block['tool_ids'])} order tools + end_call.")
+    elif is_update and agent_id:
+        # Prompt-only update (no public URL): preserve the tools already attached rather
+        # than silently stripping them — a bare sync must never break the live demo.
+        existing = get_agent_tool_ids(api_key, agent_id)
+        prompt_block["tool_ids"] = existing
+        if existing:
+            print(f"PUBLIC_BASE_URL not set — kept {len(existing)} existing order tools.")
+        else:
+            print(
+                "PUBLIC_BASE_URL not set and agent has no order tools — end_call only. "
+                "Re-run with PUBLIC_BASE_URL=<tunnel> to attach them."
+            )
     else:
         print("PUBLIC_BASE_URL or AGENT_TOOL_SECRET not set — order tools skipped (end_call only).")
 
@@ -275,9 +306,6 @@ def main() -> None:
         "tts": {"voice_id": voice_id, "model_id": loc["tts_model"]},
     }
 
-    id_key = "ELEVENLABS_AGENT_ID" if locale == "en" else f"ELEVENLABS_AGENT_ID_{locale.upper()}"
-    agent_id = env.get(id_key)
-    is_update = bool(agent_id)
     url = f"{AGENTS}/{agent_id}" if is_update else f"{AGENTS}/create"
     payload = (
         {"conversation_config": conversation_config}

@@ -6,12 +6,11 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
 
-from app.auth import hash_phone
 from app.customers import CustomerLookup, lookup_customer_by_phone
 from app.db import engine
 from app.models import CallLog
 from app.phone import normalize_phone
-from app.webhook_auth import verify_elevenlabs_signature
+from app.security import hash_phone, verify_elevenlabs_signature
 
 router = APIRouter()
 

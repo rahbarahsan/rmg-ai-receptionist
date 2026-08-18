@@ -1,6 +1,6 @@
 ---
 name: call-flow-critic
-description: Reviews changes to the voice agent prompt or tool contracts for failure modes a real caller would hit. Use proactively after editing anything in agent/ or src/lib/tools/.
+description: Reviews changes to the voice agent prompt or tool contracts for failure modes a real caller would hit. Use proactively after editing anything in agent/ or app/tools/.
 tools: Read, Glob, Grep
 model: sonnet
 ---
